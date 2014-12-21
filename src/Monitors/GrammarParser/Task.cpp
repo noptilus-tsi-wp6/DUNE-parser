@@ -1,0 +1,292 @@
+
+// ISO C++ 98 headers.
+#include <cmath>
+#include "StringRegistry.hpp"
+#include "CYKParser.hpp"
+#include "Grammar.hpp"
+#include "IPreprocessor.hpp"
+#include "Preprocessors.hpp"
+// DUNE headers.
+#include <DUNE/DUNE.hpp>
+
+namespace Monitors
+{
+	//! PCFG Parser for Dune
+  namespace GrammarParser
+  {
+    using DUNE_NAMESPACES;
+
+
+    struct Arguments
+    {
+      //! What Message to parse
+      std::vector<std::string> bind_messages;
+
+      std::string grammar_filename;
+      std::string quant_filename;
+      std::string log_file;
+
+      bool normal_abnormal_mode;
+      float normal_threshold;
+      unsigned window_size;
+      bool rolling_window;
+    };
+
+    struct Task: public  DUNE::Tasks::Periodic
+    {
+      //! Task arguments.
+      Arguments m_args;
+      Grammar grammar;
+      CYKParser parser;
+      IPreprocessor *preprocess;
+      std::ofstream logofs;
+
+
+      Task(const std::string& name, Tasks::Context& ctx):
+        DUNE::Tasks::Periodic(name, ctx)
+      {
+        param("Bind to", m_args.bind_messages)
+        .defaultValue("")
+        .description("List of messages to bind");
+
+        /*param("Entity Label", m_args.entity_label)
+        .defaultValue("")
+        .description("Entity name of output message");*/
+
+        param("Grammar", m_args.grammar_filename)
+        .defaultValue("")
+        .description("Grammar file to load");
+
+        param("Quantization", m_args.quant_filename)
+        .defaultValue("")
+        .description("Quantization file to load");
+
+        param("Log", m_args.log_file)
+        .defaultValue("")
+        .description("Quantization file to load");
+
+        param("Normal Abnormal", m_args.normal_abnormal_mode)
+        .defaultValue("true")
+        .description("Grammar mode set to normal abnormal");
+
+
+        param("Normal Threshold", m_args.normal_threshold)
+        .defaultValue("")
+        .description("Grammar mode set to normal abnormal");
+
+        param("Window Size", m_args.window_size)
+        .defaultValue("0")
+        .description("Grammar parse window");
+
+        param("Rolling Window", m_args.rolling_window)
+        .defaultValue("true")
+        .description("Grammar rolling window");
+
+
+      }
+
+      void
+      onUpdateParameters(void)
+      {
+
+        if(m_args.bind_messages.size()==0)
+        {
+            setEntityState(IMC::EntityState::ESTA_FAULT, Status::CODE_IO_ERROR);
+            return ;
+        }
+
+        if(m_args.bind_messages.size()==1)
+        {
+            if(m_args.bind_messages[0]=="Depth")
+            {
+                preprocess=new DepthPreprocessor();
+            }
+
+            if(m_args.bind_messages[0]=="Pitch")
+            {
+                preprocess=new PitchPreprocessor();
+            }
+            if(preprocess)
+            {
+                 std::vector<std::string> b=preprocess->getBindMessages();
+                bind(this, b);
+                std::cout<<"Binding to:"<<b[0]<<std::endl;
+            }
+
+        }
+        //bind(this, m_args.bind_messages);
+
+        std::cout<<"ONUPDATEPARAMETERS"<<std::endl;
+      }
+
+      void
+      onEntityResolution(void)
+      {
+
+      }
+
+      void
+      onEntityReservation(void)
+      {
+
+        //m_reserved = reserveEntity<Entities::BasicEntity>(m_args.elabel);
+      }
+
+      void
+      onResourceRelease(void)
+      {
+
+      }
+
+      void
+      onResourceAcquisition(void)
+      {
+
+      }
+
+      void
+      onResourceInitialization(void)
+      {
+        //inf("Entity State:");
+        //setEntityState(IMC::EntityState::ESTA_NORMAL, Status::CODE_ACTIVE);
+
+        //inf("Entity Label: %s %s",getEntityLabel(),getName());
+        FileSystem::Path grammarpath=m_ctx.dir_cfg/ m_args.grammar_filename;
+        FileSystem::Path quant=m_ctx.dir_cfg/ m_args.quant_filename;
+        FileSystem::Path logpath=m_ctx.dir_log/ m_args.log_file;
+        if(!grammarpath.isFile())
+        {
+            setEntityState(IMC::EntityState::ESTA_FAULT, Status::CODE_IO_ERROR);
+            return ;
+        }
+
+        std::ifstream gifs(grammarpath.c_str());
+        grammar.load(gifs);
+        gifs.close();
+
+        if(preprocess)
+        {
+            if(!quant.isFile())
+            {
+                setEntityState(IMC::EntityState::ESTA_FAULT, Status::CODE_IO_ERROR);
+                return ;
+            }
+            std::ifstream quantifs(quant.c_str());
+            preprocess->load(quantifs);
+            quantifs.close();
+        }
+        //if(logpath.isFile())
+        //{
+            logofs.open(logpath.c_str());
+        //}
+
+
+
+        grammar.convertToChomsky();
+
+        grammar.printRules();
+        std::cout<<"------"<<std::endl;
+
+        parser.loadGrammar(grammar);
+        parser.resize(m_args.window_size);
+
+        parser.printUnitary();
+        /*std::cout<<"------"<<std::endl;
+        //parser.printBinary();
+        parser.parseSymbol("0");
+        parser.printRoot();
+        std::cout<<parser.mostLikelySymbol()<<" ("<<parser.rootProbability()<<") "<<std::endl;
+         parser.parseSymbol("0");
+        parser.printRoot();
+        std::cout<<parser.mostLikelySymbol()<<" ("<<parser.rootProbability()<<") "<<std::endl;
+         parser.parseSymbol("0");
+        parser.printRoot();
+        std::cout<<parser.mostLikelySymbol()<<" ("<<parser.rootProbability()<<") "<<std::endl;
+         parser.parseSymbol("0");
+        parser.printRoot();
+        std::cout<<parser.mostLikelySymbol()<<" ("<<parser.rootProbability()<<") "<<std::endl;
+         parser.parseSymbol("0");
+        parser.printRoot();
+        std::cout<<parser.mostLikelySymbol()<<" ("<<parser.rootProbability()<<") "<<std::endl;
+        //*/
+        //grammar.printRules();
+        setEntityState(IMC::EntityState::ESTA_BOOT, Status::CODE_INIT);
+
+      }
+
+      void
+      consume(const IMC::Message* msg)
+      {
+        //if (!isActive())
+        //  return;
+          if(preprocess)
+          {
+            inf("Received  msg: %s",IMC::Factory::getAbbrevFromId(msg->getId()).c_str());
+            preprocess->prerocess(msg);
+          }
+
+          /*inf("Message id1: %s",IMC::Factory::getAbbrevFromId(msg->getId()).c_str());
+          inf("Message id2: %d",IMC::Factory::getIdFromAbbrev(EntityState().getName()));
+          inf("Message id3: %d",EntityState().getId());*/
+
+
+          /*if (!isActive())
+          {
+            requestActivation();
+            setEntityState(IMC::EntityState::ESTA_NORMAL, Status::CODE_ACTIVE);
+        }*/
+      }
+
+
+      void
+      task(void)
+      {
+
+        if(preprocess&&preprocess->symbolReady())
+        {
+
+            std::string s=preprocess->getSymbol();
+            std::cout<<"Run:"<<s<<std::endl;
+            parser.parseSymbol(s);
+            parser.printRoot();
+            if(m_args.normal_abnormal_mode)
+            {
+
+                if(parser.rootProbability()>m_args.normal_threshold)
+                    dispatchOutput("N");
+                else
+                    dispatchOutput("A");
+
+            }
+            else
+            {
+                std::string symbol=parser.mostLikelySymbol();
+                if(symbol.size()>0)
+                {
+                    dispatchOutput(symbol);
+                }
+
+            }
+        }
+
+      }
+
+        void dispatchOutput(std::string s)
+        {
+            IMC::ParserOutput out;
+            out.result=s;
+            out.source_entity=getEntityLabel();
+            dispatch(out);
+            if(logofs.is_open())
+            {
+                if(preprocess)
+                    logofs<<preprocess->getRaw()<<","<<preprocess->getSymbol()<<",";
+                logofs<<grammar.symbols.getId(s)<<std::endl;
+            }
+
+        }
+    };
+  }
+}
+
+DUNE_TASK

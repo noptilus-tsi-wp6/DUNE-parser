@@ -1,0 +1,44 @@
+S
+0
+S 3
+1 SU 1 0 %
+1 SD 1 0 %
+1 SH 1 0 %
+
+SD 1
+1 D 0.3 0 %rules.addRule('SD',{'D'},0.3);
+
+SU 1
+1 U 0.3 0 %rules.addRule('SU',{'U'},0.3);
+
+SH 1
+1 H 0.3 0 %rules.addRule('SH',{'H'},0.3);
+
+D 2
+2 D d 0.5 0 %rules.addRule('D',{'D' 'd'},0.5);
+1 d   0.5 0 %rules.addRule('D',{'d'},0.5);
+
+U 2
+2 U u 0.5 0 %rules.addRule('U',{'U' 'u'},0.5);
+1 u 0.5 0 %rules.addRule('U',{'u'},0.5);
+
+H 4
+2 H h 0.34 0 %rules.addRule('H',{'H' 'h'},0.34);
+3 D H U 0.16 0 %rules.addRule('H',{'D' 'H' 'U'},0.16);
+3 U H D 0.16 0 %rules.addRule('H',{'U' 'H' 'D'},0.16);
+1 h 0.34 0 %rules.addRule('H',{'h'},0.34);
+
+d 3
+1 1 0.98 0 %rules.addRule('d',{'1'},0.98);
+1 -1 0.01 0 %rules.addRule('d',{'-1'},0.01);
+1 0 0.01 0%rules.addRule('d',{'0'},0.01);
+
+u 3
+1 -1 0.98 0 %rules.addRule('u',{'-1'},0.98);
+1 1 0.01 0 %rules.addRule('u',{'1'},0.01);
+1 0 0.01 0 %rules.addRule('u',{'0'},0.01);
+
+h 3
+1 -1 0.01 0 %rules.addRule('h',{'-1'},0.01);
+1 1  0.01 0 %rules.addRule('h',{'1'},0.01);
+1 0 0.98 0 %rules.addRule('h',{'0'},0.98);
