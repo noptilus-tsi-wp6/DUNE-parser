@@ -22,7 +22,7 @@ class DepthPreprocessor : public IPreprocessor
 			return res;
 	}
 
-    virtual bool prerocess(const DUNE::IMC::Message* msg)
+    virtual bool preprocess(const DUNE::IMC::Message* msg)
     {
 		if(msg&&msg->getId()==messageId)
 		{
@@ -82,7 +82,7 @@ class PitchPreprocessor : public IPreprocessor
 			return res;
 	}
 
-    virtual bool prerocess(const DUNE::IMC::Message* msg)
+    virtual bool preprocess(const DUNE::IMC::Message* msg)
     {
 		if(msg&&msg->getId()==messageId)
 		{
@@ -116,6 +116,55 @@ class PitchPreprocessor : public IPreprocessor
 
 };
 
+
+class ConcatPreprocessor
+{
+
+	public:
+
+	 bool prerocess(const DUNE::IMC::Message* msg)
+	 {
+		 bool flag=true;
+			for(unsigned i=0;i<concat.size();i++)
+			{
+				if(concat[i]->preprocess(msg)==false)
+					flag=false;
+
+			}
+		return flag;
+	}
+	std::string getSymbol() {
+		std::string symbol;
+		for(unsigned i=0;i<concat.size();i++)
+		{
+			symbol.append(concat[i]->getSymbol());
+		}
+		return symbol;
+
+	};
+
+	bool symbolReady() {
+		for(unsigned i=0;i<concat.size();i++)
+		{
+			if(concat[i]->symbolReady())
+				return true;
+		}
+		return false;
+	 }
+	std::vector<std::string> getBindMessages()
+	{
+		std::vector<std::string> res;
+		for(unsigned i=0;i<concat.size();i++)
+		{
+			std::vector<std::string> resi=concat[i]->getBindMessages();
+			res.insert(res.end(),resi.begin(),resi.end());
+		}
+		return res;
+	}
+	void append(IPreprocessor*p) {concat.push_back(p);};
+
+	std::vector<IPreprocessor*> concat;
+};
 
 
 #endif

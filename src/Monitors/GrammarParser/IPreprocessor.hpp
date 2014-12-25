@@ -12,7 +12,7 @@ class IPreprocessor
     virtual bool symbolReady() =0;
     virtual std::vector<std::string> getBindMessages()=0;
 
-    virtual bool prerocess(const DUNE::IMC::Message* msg) =0;
+    virtual bool preprocess(const DUNE::IMC::Message* msg) =0;
 
     virtual bool load(std::ifstream &ifs)=0;
     virtual std::string getRaw() =0;

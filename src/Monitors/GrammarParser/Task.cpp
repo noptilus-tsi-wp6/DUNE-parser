@@ -9,6 +9,19 @@
 // DUNE headers.
 #include <DUNE/DUNE.hpp>
 
+//Stl string comparisson
+#include <algorithm>
+using namespace std;
+
+
+template<class TContainer>
+bool begins_with(const TContainer& input, const TContainer& match)
+{
+    return input.size() >= match.size()
+        && equal(match.begin(), match.end(), input.begin());
+}
+
+
 namespace Monitors
 {
 	//! PCFG Parser for Dune
@@ -22,8 +35,8 @@ namespace Monitors
       //! What Message to parse
       std::vector<std::string> bind_messages;
 
-      std::string grammar_filename;
-      std::string quant_filename;
+     std::string  grammar_filename;
+     std::vector<std::string>  quant_filename;
       std::string log_file;
 
       bool normal_abnormal_mode;
@@ -38,7 +51,7 @@ namespace Monitors
       Arguments m_args;
       Grammar grammar;
       CYKParser parser;
-      IPreprocessor *preprocess;
+      ConcatPreprocessor *preprocess;
       std::ofstream logofs;
 
 
@@ -97,22 +110,34 @@ namespace Monitors
 
         if(m_args.bind_messages.size()==1)
         {
-            if(m_args.bind_messages[0]=="Depth")
+
+
+        }
+        if(m_args.bind_messages.size()>0)
+        {
+            preprocess= new ConcatPreprocessor();
+            for(unsigned i=0;i<m_args.bind_messages.size();i++)
             {
-                preprocess=new DepthPreprocessor();
+
+                if(m_args.bind_messages[i]=="Depth")
+                {
+                    preprocess->append(new DepthPreprocessor());
+                }
+
+                if(m_args.bind_messages[i]=="Pitch")
+                {
+                    preprocess->append(new PitchPreprocessor());
+                }
             }
 
-            if(m_args.bind_messages[0]=="Pitch")
-            {
-                preprocess=new PitchPreprocessor();
-            }
-            if(preprocess)
-            {
-                 std::vector<std::string> b=preprocess->getBindMessages();
-                bind(this, b);
-                std::cout<<"Binding to:"<<b[0]<<std::endl;
-            }
+        }
 
+
+        if(preprocess)
+        {
+             std::vector<std::string> b=preprocess->getBindMessages();
+            bind(this, b);
+            std::cout<<"Binding to:"<<b[0]<<std::endl;
         }
         //bind(this, m_args.bind_messages);
 
@@ -151,8 +176,9 @@ namespace Monitors
         //setEntityState(IMC::EntityState::ESTA_NORMAL, Status::CODE_ACTIVE);
 
         //inf("Entity Label: %s %s",getEntityLabel(),getName());
+
         FileSystem::Path grammarpath=m_ctx.dir_cfg/ m_args.grammar_filename;
-        FileSystem::Path quant=m_ctx.dir_cfg/ m_args.quant_filename;
+
         FileSystem::Path logpath=m_ctx.dir_log/ m_args.log_file;
         if(!grammarpath.isFile())
         {
@@ -164,16 +190,31 @@ namespace Monitors
         grammar.load(gifs);
         gifs.close();
 
+
+
+
+
+
         if(preprocess)
         {
-            if(!quant.isFile())
+
+            for(unsigned i=0;i<m_args.quant_filename.size();i++)
             {
-                setEntityState(IMC::EntityState::ESTA_FAULT, Status::CODE_IO_ERROR);
-                return ;
+                if(m_args.quant_filename[i]=="") //No quantizer defined for this, dont care
+                    continue;
+                FileSystem::Path quant=m_ctx.dir_cfg/ m_args.quant_filename[i];
+
+                if(!quant.isFile())
+                {
+                    setEntityState(IMC::EntityState::ESTA_FAULT, Status::CODE_IO_ERROR);
+                    return ;
+                }
+                std::ifstream quantifs(quant.c_str());
+                preprocess->concat[i]->load(quantifs);
+                quantifs.close();
             }
-            std::ifstream quantifs(quant.c_str());
-            preprocess->load(quantifs);
-            quantifs.close();
+
+
         }
         //if(logpath.isFile())
         //{
@@ -280,7 +321,13 @@ namespace Monitors
             if(logofs.is_open())
             {
                 if(preprocess)
-                    logofs<<preprocess->getRaw()<<","<<preprocess->getSymbol()<<",";
+                {
+                    for(unsigned i=0;i<preprocess->concat.size();i++)
+                        logofs<<preprocess->concat[i]->getRaw()<<",";
+                    for(unsigned i=0;i<preprocess->concat.size();i++)
+                        logofs<<preprocess->concat[i]->getSymbol()<<",";
+
+                }
                 logofs<<grammar.symbols.getId(s)<<std::endl;
             }
 
