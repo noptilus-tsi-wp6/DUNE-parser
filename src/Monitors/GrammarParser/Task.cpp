@@ -128,6 +128,13 @@ namespace Monitors
                 {
                     preprocess->append(new PitchPreprocessor());
                 }
+                std::string hierarchicalname="ParserOutput.";
+                if(begins_with(m_args.bind_messages[i],hierarchicalname))
+                {
+                    HierarchicalPreprocessor *p = new HierarchicalPreprocessor();
+                    p->setEntityLabel(m_args.bind_messages[i].substr(hierarchicalname.size()));
+                    preprocess->append(p);
+                }
             }
 
         }

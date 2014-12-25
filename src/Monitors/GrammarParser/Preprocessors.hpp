@@ -62,6 +62,58 @@ class DepthPreprocessor : public IPreprocessor
 
 };
 
+class HierarchicalPreprocessor: public IPreprocessor
+{
+    public:
+
+	HierarchicalPreprocessor() : ready(false)
+	{
+			symbol="";
+			messageId=DUNE::IMC::Factory::getIdFromAbbrev("ParserOutput");
+
+	}
+	virtual std::string getSymbol() {ready=false;return symbol;};
+    virtual bool symbolReady() {return ready;};
+    void setEntityLabel(std::string s) {entity_label=s;};
+    virtual std::vector<std::string> getBindMessages()
+    {
+			std::vector<std::string> res;
+			res.push_back("ParserOutput");
+			return res;
+	}
+
+    virtual bool preprocess(const DUNE::IMC::Message* msg)
+    {
+		if(msg&&msg->getId()==messageId)
+		{
+
+			const DUNE::IMC::ParserOutput* d=(const DUNE::IMC::ParserOutput*)msg;
+			if(d->source_entity!=entity_label)
+				return false;
+			symbol = d->result;
+			ready=true;
+
+		}
+		return true;
+	}
+	virtual std::string getRaw()
+	{
+		return symbol;
+	}
+
+    virtual bool load(std::ifstream &ifs)
+    {
+        (void)ifs;// Suppress warning
+		return true; //Dont care
+	};
+
+    bool ready;
+    std::string symbol;
+    std::string entity_label;
+    uint32_t messageId;
+
+
+};
 
 
 class PitchPreprocessor : public IPreprocessor
