@@ -248,6 +248,7 @@ namespace Monitors
         //{
             logofs.open(logpath.c_str());
         //}
+        logofs<<std::setprecision(20);
 
 
 
@@ -335,6 +336,7 @@ namespace Monitors
             {
                 if(preprocess)
                 {
+                    //std::cout<<preprocess->getTimeStamp()<<std::endl;
 					logofs<<preprocess->getTimeStamp()<<",";
                     for(unsigned i=0;i<preprocess->concat.size();i++)
                         logofs<<preprocess->concat[i]->getRaw()<<",";
