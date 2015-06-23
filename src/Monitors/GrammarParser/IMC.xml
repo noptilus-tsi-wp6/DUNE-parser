@@ -7681,7 +7681,7 @@
     <description>
       This message contains the output of a parser operation
     </description>
-    <field name="Result" abbrev="result" type="plaintext">.
+    <field name="Result" abbrev="result" type="plaintext">
       <description>
         Output symbol id.
       </description>
