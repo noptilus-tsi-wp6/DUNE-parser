@@ -43,6 +43,7 @@ namespace Monitors
       float normal_threshold;
       unsigned window_size;
       bool rolling_window;
+      bool csvsave;
     };
 
     struct Task: public  DUNE::Tasks::Periodic
@@ -97,6 +98,9 @@ namespace Monitors
         param("Rolling Window", m_args.rolling_window)
         .defaultValue("true")
         .description("Grammar rolling window");
+        param("CSV Logging", m_args.csvsave)
+        .defaultValue("false")
+        .description("Save CSV files");
 
 
       }
@@ -235,8 +239,11 @@ namespace Monitors
 
         }
 
-        logofs.open(logpath.c_str());
-        logofs<<std::setprecision(20);
+        if(m_args.csvsave==true)
+        {
+            logofs.open(logpath.c_str());
+            logofs<<std::setprecision(20);
+        }
 
 
 
@@ -304,7 +311,7 @@ namespace Monitors
             out.result=s;
             out.source_entity=getEntityLabel();
             dispatch(out);
-            if(logofs.is_open())
+            if(m_args.csvsave&&logofs.is_open())
             {
                 if(preprocess)
                 {
